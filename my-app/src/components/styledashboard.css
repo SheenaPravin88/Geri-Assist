@@ -1,3 +1,6 @@
+.body{
+  padding: 20px 24px 28px;
+}
 .navalign{
     background-color: blueviolet;
     color: azure;
@@ -45,6 +48,12 @@
     .small-screen{
         display:block !important;
     }
+    .navbar-nav .big-sc-login{
+        display: none !important;
+    }
+    .navbar-nav .small-sc-login{
+        display:block !important;
+    }
     .backpurple-200{
     background-color: blueviolet;
     color: azure;
@@ -58,7 +67,7 @@
 }
 .schedule-grid, .schedule-grid-row {
   display: grid;
-  grid-template-columns: 150px repeat(14, 1fr);
+  grid-template-columns: 180px repeat(17, 1fr);
   gap: 1px;
   background-color: #dee2e6;
 }
@@ -130,4 +139,157 @@
   box-shadow: 2px solid black;
   color: black;
   overflow-y: scroll;
+}
+
+/* Register Page */
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 4px 0 6px;
+  letter-spacing: -0.2px;
+}
+
+.subtitle {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Form */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rowfld {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rowfld > .field {
+  flex: 1 1 200px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.input,
+.select {
+  appearance: none;
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.02s ease;
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ring) 35%, transparent);
+}
+
+.input:hover,
+.select:hover {
+  border-color: #cbd5e1;
+}
+
+.helper {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.02s ease, box-shadow 0.18s ease, background 0.18s ease, border 0.18s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-600));
+  color: white;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 10px 26px rgba(37, 99, 235, 0.33);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.btn-ghost:hover {
+  background: #f8fafc;
+}
+
+/* Messages */
+.message {
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid;
+}
+
+.message.success {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+  background: color-mix(in srgb, var(--success) 7%, #ffffff);
+}
+
+.message.error {
+  color: var(--error);
+  border-color: color-mix(in srgb, var(--error) 35%, var(--border));
+  background: color-mix(in srgb, var(--error) 7%, #ffffff);
+}
+
+/* Small text links */
+.text-link {
+  color: var(--primary-600);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.text-link:hover {
+  text-decoration: underline;
 }

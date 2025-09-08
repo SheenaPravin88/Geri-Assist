@@ -2,6 +2,8 @@ import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
 import SchedulePage from './components/SchedulePage';
+import Login from './components/Login';
+import Register from './components/Register';
 import { BrowserRouter as Router, Routes, Route} from 'react-router-dom';
 import React from 'react';
 
@@ -18,6 +20,8 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />}></Route>
             <Route path="/schedule" element={<SchedulePage />}></Route>
+            <Route path="/login" element={<Login />}></Route>
+            <Route path="/register" element={<Register />}></Route>
           </Routes>
           </div>
         </div>

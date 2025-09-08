@@ -5,6 +5,7 @@ import './styledashboard.css';
 import Modal from './editModal.js';
 import { Form, Button, Row, Col, InputGroup } from 'react-bootstrap';
 
+
 export default function SchedulePage() {
   const [scheduleData, setScheduleData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -90,13 +91,13 @@ export default function SchedulePage() {
       }
 
       const data = await res.json();
-      setMessage("Form submitted successfully ✅");
+      setMessage("Form submitted successfully");
       console.log("API response:", data);
       handleClose();
       fetchSchedule();
     } catch (err) {
       console.error(err);
-      setMessage("Error submitting form ❌");
+      setMessage("Error submitting form");
     }
   };
   const fetchSchedule = async () => {
@@ -121,7 +122,7 @@ export default function SchedulePage() {
 
   if (loading) return <div>Loading schedule...</div>;
   if (error) return <div>Error: {error.message}</div>;
-  const hours = Array.from({ length: 14 }, (_, i) => 6 + i); // 06 to 19
+  const hours = Array.from({ length: 17 }, (_, i) => 6 + i); // 06 to 19
 
   const clschedule = () => {
     setEmpltrue(false);
@@ -185,22 +186,22 @@ export default function SchedulePage() {
             ))}
           </div>
           {scheduleData.employee.map((emp, rowIndex) => (
-            <div className='row-body'>
+            <div className={emp.status === "Available" ? "row-body" : "d-none"}>
               <div className='cell employee-cell'>{emp.first_name}</div>
               <div key={rowIndex} className="row-body">
                 {hours.map((hour, colIndex) => {
                   const dtime = currentDate;
                   const emp_shift = scheduleData.shift.find(s => (s.emp_id === emp.emp_id));
                   const appt = scheduleData.shift.find(s => (s.emp_id === emp.emp_id && (
-                    (hour == s.shift_start_time.split(" ")[4].split(":")[0]) &&
+                    (hour == s.shift_start_time.split(" ")[1].split(":")[0]) &&
                   (new Date(s.shift_start_time)).toDateString()==dtime.toDateString())))
                   const nogap = scheduleData.shift.find(s => (s.emp_id === emp.emp_id && (
-                    (hour >= s.shift_start_time.split(" ")[4].split(":")[0] && hour < s.shift_end_time.split(" ")[4].split(":")[0]))))
+                    (hour >= s.shift_start_time.split(" ")[1].split(":")[0] && hour < s.shift_end_time.split(" ")[1].split(":")[0]))))
                   const s_dur = scheduleData.daily_shift.find(d => (d.emp_id === emp.emp_id && (
-                    (hour == d.shift_start_time.split(" ")[4].split(":")[0]) && 
+                    (hour == d.shift_start_time.split(" ")[1].split(":")[0]) && 
                   (new Date(d.shift_start_time)).toDateString()==dtime.toDateString())))
                   const nogap_daily = scheduleData.daily_shift.find(d => (d.emp_id === emp.emp_id && (
-                    (hour >= d.shift_start_time.split(" ")[4].split(":")[0] && hour < d.shift_end_time.split(" ")[4].split(":")[0]))))
+                    (hour >= d.shift_start_time.split(" ")[1].split(":")[0] && hour < d.shift_end_time.split(" ")[1].split(":")[0]))))
                   
                     if (open) {
                     return (
@@ -318,10 +319,10 @@ export default function SchedulePage() {
                   }
                   //employee tile
                   if (s_dur && !clttrue && empltrue) {
-                    const startHour = parseInt(s_dur.shift_start_time.split(" ")[4].split(":")[0]);
-                    const endHour = parseInt(s_dur.shift_end_time.split(" ")[4].split(":")[0]);
-                    const startMinute = s_dur.shift_start_time.split(" ")[4].split(":")[1];
-                    const endMinute = s_dur.shift_end_time.split(" ")[4].split(":")[1];
+                    const startHour = parseInt(s_dur.shift_start_time.split(" ")[1].split(":")[0]);
+                    const endHour = parseInt(s_dur.shift_end_time.split(" ")[1].split(":")[0]);
+                    const startMinute = s_dur.shift_start_time.split(" ")[1].split(":")[1];
+                    const endMinute = s_dur.shift_end_time.split(" ")[1].split(":")[1];
                     const duration = endHour - startHour;
 
                     const client = scheduleData.client.find(cl => cl.client_id === s_dur.client_id);
@@ -340,10 +341,10 @@ export default function SchedulePage() {
                   }
                   //Client tile
                   else if (appt && !empltrue && clttrue) {
-                    const startHour = parseInt(appt.shift_start_time.split(" ")[4].split(":")[0]);
-                    const endHour = parseInt(appt.shift_end_time.split(" ")[4].split(":")[0]);
-                    const startMinute = appt.shift_start_time.split(" ")[4].split(":")[1];
-                    const endMinute = appt.shift_end_time.split(" ")[4].split(":")[1];
+                    const startHour = parseInt(appt.shift_start_time.split(" ")[1].split(":")[0]);
+                    const endHour = parseInt(appt.shift_end_time.split(" ")[1].split(":")[0]);
+                    const startMinute = appt.shift_start_time.split(" ")[1].split(":")[1];
+                    const endMinute = appt.shift_end_time.split(" ")[1].split(":")[1];
                     const duration = endHour - startHour;
 
                     const client = scheduleData.client.find(cl => cl.client_id === appt.client_id);
@@ -360,6 +361,9 @@ export default function SchedulePage() {
                   else if (!appt && !nogap && !empltrue && clttrue) {
                     return (<div key={colIndex} className="cell empty-cell"></div>);
                   }
+                  else if (!appt && nogap && !empltrue && clttrue) {
+                    return (<div key={colIndex} className="cell empty-cell"></div>);
+                  }
                   else {
                     return null;
                   }
@@ -370,17 +374,17 @@ export default function SchedulePage() {
                 {hours.map((hour, colIndex) => {
                   const dtime = currentDate;
                   const appt = scheduleData.shift.find(s => (s.emp_id === emp.emp_id && (
-                    (hour == s.shift_start_time.split(" ")[4].split(":")[0]) && 
+                    (hour == s.shift_start_time.split(" ")[1].split(":")[0]) && 
                   (new Date(s.shift_start_time)).toDateString()==dtime.toDateString())))
                   const nogap = scheduleData.shift.find(s => (s.emp_id === emp.emp_id && (
-                    (hour >= s.shift_start_time.split(" ")[4].split(":")[0] && 
-                    hour < s.shift_end_time.split(" ")[4].split(":")[0]))))
+                    (hour >= s.shift_start_time.split(" ")[1].split(":")[0] && 
+                    hour < s.shift_end_time.split(" ")[1].split(":")[0]))))
                   //Client tile
                   if (appt && empltrue && !clttrue) {
-                    const startHour = parseInt(appt.shift_start_time.split(" ")[4].split(":")[0]);
-                    const endHour = parseInt(appt.shift_end_time.split(" ")[4].split(":")[0]);
-                    const startMinute = appt.shift_start_time.split(" ")[4].split(":")[1];
-                    const endMinute = appt.shift_end_time.split(" ")[4].split(":")[1];
+                    const startHour = parseInt(appt.shift_start_time.split(" ")[1].split(":")[0]);
+                    const endHour = parseInt(appt.shift_end_time.split(" ")[1].split(":")[0]);
+                    const startMinute = appt.shift_start_time.split(" ")[1].split(":")[1];
+                    const endMinute = appt.shift_end_time.split(" ")[1].split(":")[1];
                     const duration = endHour - startHour;
 
                     const client = scheduleData.client.find(cl => cl.client_id === appt.client_id);
@@ -399,7 +403,7 @@ export default function SchedulePage() {
                     return (<div key={colIndex} className="cell empty-cell"></div>);
                   }
                   else {
-                    return null;
+                    return (<div key={colIndex} className="cell empty-cell"></div>);
                   }
                 })}
               </div>
