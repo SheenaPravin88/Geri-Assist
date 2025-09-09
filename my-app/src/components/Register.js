@@ -1,5 +1,6 @@
 // frontend/src/pages/Register.jsx
 import { useState } from "react";
+import { Link } from 'react-router-dom';
 // import { postJSON } from "../api";
 
 export default function Register() {
@@ -170,7 +171,7 @@ export default function Register() {
           {busy ? "Creating..." : "Create account"}
         </button>
       </div>
-
+      <div className="helper">Want to Login ? <Link to="/login">Click me to Login!</Link></div>
       {msg && (
         <div className={`message ${ok ? "success" : "error"}`} role="status" aria-live="polite">
           {msg}
