@@ -48,10 +48,10 @@
     .small-screen{
         display:block !important;
     }
-    .navbar-nav .big-sc-login{
+    .navalign .big-sc-login{
         display: none !important;
     }
-    .navbar-nav .small-sc-login{
+    .navalign .small-sc-login{
         display:block !important;
     }
     .backpurple-200{
