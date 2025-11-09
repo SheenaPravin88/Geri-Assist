@@ -4,6 +4,11 @@ import Dashboard from './components/Dashboard';
 import SchedulePage from './components/SchedulePage copy';
 import Login from './components/Login';
 import Register from './components/Register2';
+import ClientDetailsPage from './components/ClientDetailsPage.js';
+import EmployeeDetails from './components/EmployeeDetailsPage.js';
+import InjuryReportPage from './components/InjuryReport.js';
+import InjuryReportForm from './components/fillInjuryReport.js';
+import GenerateShifts from './components/PrepareMonthlySchedule.js';
 import { BrowserRouter as Router, Routes, Route} from 'react-router-dom';
 import React from 'react';
 
@@ -22,6 +27,11 @@ function App() {
             <Route path="/schedule" element={<SchedulePage />}></Route>
             <Route path="/login" element={<Login />}></Route>
             <Route path="/register" element={<Register />}></Route>
+            <Route path="/client" element={<ClientDetailsPage />}></Route>
+            <Route path="/employee" element={<EmployeeDetails />}></Route>
+            <Route path="/injuryReport" element={<InjuryReportPage />}></Route>
+            <Route path="/fillInjuryReport" element={<InjuryReportForm />}></Route>
+            <Route path="/monthlySchedule" element={<GenerateShifts />}></Route>
           </Routes>
           </div>
         </div>
