@@ -40,6 +40,28 @@ function GenerateShifts({ empId }) {
     );
   };
 
+  const handlenewShiftSchedule = async () => {
+  try {
+    const response = await fetch("http://127.0.0.1:5000/newShiftSchedule", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const result = await response.json();
+    // setSched(true);
+    // setSchedMsg(response.message || "Schedule Prepared successfully");
+    alert("Shifts assigned for next month");
+  } catch (error) {
+    console.error("Error preparing schedule:", error);
+    // setSched(false);
+    // setSchedMsg(error.message || "Schedule Preparation failed");
+    alert("Failed to prepare schedule");
+  }  
+  // finally {
+  //   setBusy(false);
+  // }
+};
+
   const handleGenerateShifts = async () => {
     setLoading(true);
     setMessage("");
@@ -266,6 +288,16 @@ function GenerateShifts({ empId }) {
             </div>
           )}
         </div>
+      </div>
+      <div className="shadow-sm">
+      <div className="btn btn-secondary" type="button" onClick={handlenewShiftSchedule}>
+          Prepare schedule for next month
+      </div>
+      {/* {schedmsg && (
+        <div className={sched? "message success" : "message error"} role="status" aria-live="polite">
+          {schedmsg}
+        </div>
+      )} */}
       </div>
     </div>
   );

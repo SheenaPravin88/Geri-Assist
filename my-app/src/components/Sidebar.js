@@ -1,7 +1,5 @@
 import './styledashboard.css';
-import axios from 'axios';
-import SchedulePage from './SchedulePage copy';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import "../../node_modules/bootstrap-icons/font/bootstrap-icons.css";
 
@@ -10,25 +8,6 @@ export default function Sidebar() {
     <div>
     <div class="container-fluid overflow-hidden large-screen">
     <div className="bg-blue-900 text-white row vh-100 position-fixed">
-      {/*<nav className="sidebar-nav">
-        <li class="nav-item">
-        <Link to="/" className='text-decoration-none text-white'>Dashboard</Link>
-        </li>
-        <li class="nav-item">
-        Clients
-        </li>
-        <li class="nav-item">
-        Employees
-        </li>
-        <li class="nav-item"><Link to="/schedule" className='text-decoration-none text-white'>
-        Schedules</Link>
-        </li>
-      </nav>
-      <div class="sidebar-footer border-top d-flex">
-        <button class="sidebar-toggler" type="button"></button>
-      </div>
-    <div>  
-    </div>*/}
     <div class="col-12 col-sm-3 col-xl-2 px-sm-2 px-0 bg-blue-900 d-flex sticky-top">
             <div class="d-flex flex-sm-column flex-row flex-grow-1 align-items-center align-items-sm-start px-3 pt-2 text-white">
                 <ul class="nav nav-pills flex-sm-column flex-row flex-nowrap flex-shrink-1 flex-sm-grow-0 flex-grow-1 mb-sm-auto mb-0 justify-content-center align-items-center align-items-sm-start text-white" id="menu">
@@ -41,9 +20,19 @@ export default function Sidebar() {
                         <a href="#submenu1" class="nav-link px-sm-0 px-2">
                             <i class="fs-5 bi-person"></i><span class="ms-1 d-none d-sm-inline text-white"><Link to="/client" className='text-decoration-none text-white'>Client</Link></span> </a>
                     </li>
+                    <li class="dropdown text-white">
+                        <a href="#" class="nav-link dropdown-toggle px-sm-0 px-1" id="dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fs-5 bi-bag-plus"></i><span class="ms-1 d-none d-sm-inline">Employee</span>
+                        </a>
+                    <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdown">
+                        <li><a class="dropdown-item" href="#"><Link to="/employee" className='text-decoration-none text-white'>Employee List</Link></a></li>
+                        <li><a class="dropdown-item" href="#"><Link to="/register" className='text-decoration-none text-white'>Register new Employee</Link></a></li>
+                        <li><a class="dropdown-item" href="#"><Link to="/addShift" className='text-decoration-none text-white'>Add Shift</Link></a></li>
+                    </ul>
+                    </li>
                     <li>
                         <a href="#" class="nav-link px-sm-0 px-2">
-                            <i class="fs-5 bi-bag-plus"></i><span class="ms-1 d-none d-sm-inline text-white"><Link to="/employee" className='text-decoration-none text-white'>Employee</Link></span></a>
+                            <i class="fs-5 bi-graph-up-arrow"></i><span class="ms-1 d-none d-sm-inline text-white"><Link to="/employee" className='text-decoration-none text-white'>Accounting</Link></span></a>
                     </li>
                     <li class="dropdown text-white">
                         <a href="#" class="nav-link dropdown-toggle px-sm-0 px-1" id="dropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -66,6 +55,10 @@ export default function Sidebar() {
                             <li><a class="dropdown-item" href="#"><Link to="/injuryReport" className='text-decoration-none text-white'>Employee Injury Report</Link></a></li>
                             <li><a class="dropdown-item" href="#"><Link to="/fillInjuryReport" className='text-decoration-none text-white'>Fill Injury Report</Link></a></li>
                         </ul>
+                    </li>
+                    <li>
+                        <a href="#" class="nav-link px-sm-0 px-2">
+                            <i class="fs-5 bi-gear"></i><span class="ms-1 d-none d-sm-inline text-white"><Link to="/employee" className='text-decoration-none text-white'>Settings</Link></span></a>
                     </li>
                 </ul>
             </div>

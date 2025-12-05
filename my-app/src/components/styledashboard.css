@@ -373,3 +373,63 @@
   transform: scale(1.05);
 }
 
+/* each employee detail */
+.tab {
+  cursor: pointer;
+  padding-bottom: 6px;
+  color: #666;
+}
+
+.tab:hover {
+  color: black;
+}
+
+.tab.active {
+  color: #0d6efd;
+  border-bottom: 3px solid #0d6efd;
+}
+
+.schedule-grid {
+    border: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+}
+
+.schedule-header, .schedule-body {
+    display: grid;
+    grid-template-columns: 100px repeat(14, 1fr);
+}
+
+.time-col {
+    background: #f8f9fa;
+}
+
+.time-cell {
+    height: 60px;
+    border-bottom: 1px solid #eee;
+    padding-left: 5px;
+    font-size: 12px;
+}
+
+.day-col {
+    border-left: 1px solid #eee;
+    position: relative;
+}
+
+.column-container {
+    position: relative;
+    height: calc(60px * 16); /* 16 hours (07–22) */
+}
+
+.shift-block {
+    position: absolute;
+    left: 5px;
+    right: 5px;
+    background: #e1f3ff;
+    border-left: 4px solid #0d6efd;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+
