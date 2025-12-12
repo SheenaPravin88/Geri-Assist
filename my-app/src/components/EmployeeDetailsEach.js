@@ -4,6 +4,10 @@ import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Tooltip from "react-bootstrap/Tooltip";
 import EmployeeAttachments from "./EmployeeAttachments.js";
 import EmployeeUnavailability from "./EmployeeUnavailability.js";
+import EmployeeAvailability from "./EmployeeAvailability.js";
+import EmployeeCustomPayRates from "./EmployeeCustomPayRates.js";
+import EmployeeEmploymentSettings from "./EmployeeSettings.js";
+import NotificationSettings from "./EmployeeNotification.js";
 
 
 const EmployeeDetailsEach = () => {
@@ -179,6 +183,11 @@ const EmployeeDetailsEach = () => {
         ratings: false,
         contact_tracking: false,
         attachments: true,
+        custom_pay_rates: false,
+        availability: true,
+        unavailability: false,
+        settings: false,
+        notification: false,
     });
 
     const handleShow = (tab) => {
@@ -367,8 +376,42 @@ const EmployeeDetailsEach = () => {
                     </div>
                 )}
                 {showtab.overview && showsubtab.attachments && <EmployeeAttachments emp={employee} />}
-                {showtab.employment && <EmployeeUnavailability emp={employee} />}
+                {showtab.employment  && <div className="d-flex mt-4">
 
+                    {/* LEFT SIDEBAR */}
+                    <div className="border-end pe-4" style={{ width: "220px" }}>
+                        {/*<div className="fw mb-2">Custom Pay Rates</div>*/}
+                        {/*<div className="fw text-primary mb-2">Unavailability</div>*/}
+                        {/*<div className="fw mb-2">Availability</div>*/}
+                        {/*<div className="fw mb-2">Employment Settings</div>*/}
+                        {/*<div className="fw mb-2">Notification Settings</div>*/}
+                        {[
+                            "custom_pay_rates",
+                            "availability",
+                            "unavailability",
+                            "settings",
+                            "notification",
+                        ].map((tab3) => (
+                            <div
+                                key={tab3}
+                                className={`tab ${showsubtab[tab3] ? "fw mb-2 text-primary border-bottom" : "fw mb-2"}`}
+                                style={{ cursor: "pointer" }}
+                                onClick={() => handleShowsub(tab3)}
+                            >
+                                {tab3.charAt(0).toUpperCase() + tab3.slice(1)}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* RIGHT CONTENT */}
+                    <div className="flex-grow-1 ps-4">
+                        {showtab.employment && showsubtab.custom_pay_rates && <EmployeeCustomPayRates emp={employee} />}
+                        {showtab.employment && showsubtab.unavailability && <EmployeeUnavailability emp={employee} />}
+                        {showtab.employment && showsubtab.availability && <EmployeeAvailability emp={employee} />}
+                        {showtab.employment && showsubtab.settings && <EmployeeEmploymentSettings emp={employee} />}
+                        {showtab.employment && showsubtab.notification && <NotificationSettings emp={employee} />}
+                    </div>
+                </div>}
 
 
             </div>

@@ -123,13 +123,13 @@ const EmployeeUnavailability = ({ emp }) => {
         <div className="d-flex mt-4">
 
             {/* LEFT SIDEBAR */}
-            <div className="border-end pe-4" style={{ width: "220px" }}>
-                <div className="fw mb-2">Custom Pay Rates</div>
-                <div className="fw text-primary mb-2">Unavailability</div>
-                <div className="fw mb-2">Availability</div>
-                <div className="fw mb-2">Employment Settings</div>
-                <div className="fw mb-2">Notification Settings</div>
-            </div>
+            {/*<div className="border-end pe-4" style={{ width: "220px" }}>*/}
+            {/*    <div className="fw mb-2">Custom Pay Rates</div>*/}
+            {/*    <div className="fw text-primary mb-2">Unavailability</div>*/}
+            {/*    <div className="fw mb-2">Availability</div>*/}
+            {/*    <div className="fw mb-2">Employment Settings</div>*/}
+            {/*    <div className="fw mb-2">Notification Settings</div>*/}
+            {/*</div>*/}
 
             {/* RIGHT CONTENT */}
             <div className="flex-grow-1 ps-4">
