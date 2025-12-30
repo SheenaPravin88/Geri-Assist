@@ -7,14 +7,6 @@ import './styledashboard.css';
 import Modal from './editModal.js';
 import { Form, Button, Row, Col, InputGroup } from 'react-bootstrap';
 
-/**
- * SchedulePage
- * - Calls the API (expects JSON with client, employee, shift, daily_shift arrays)
- * - Builds per-employee data for a selected date
- * - Renders: Header (hours) + for each employee: 2 rows (shifts, appointments)
- * - Timeline resolution: minutes (1 grid column = 1 minute)
- */
-
 const toMinutesOfDay = (timeStr) => {
   // timeStr expected like "YYYY-MM-DD HH:MM:SS" or "HH:MM:SS"
   const timePart = timeStr.includes(" ") ? timeStr.split(" ")[1] : timeStr;
@@ -39,10 +31,15 @@ export default function SchedulePage() {
   const [shift_ptr_end, setShiftptrend] = useState(null);
   const [message, setMessage] = useState("");
   const [unassignedPresent, setPresent] = useState(false);
+    const [filterEmployees, setFilterEmployees] = useState("");
+    const [filterClientGroup, setFilterClientGroup] = useState("");
+    const [filterServiceDept, setFilterServiceDept] = useState("");
+    const [filterSaved, setFilterSaved] = useState("");
   const [formData, setFormData] = useState({
     shift_id: "",
     client_id: "",
     emp_id: "",
+    serviceType:"",
     shift_start_time: "",
     shift_end_time: "",
     shift_status: "",
@@ -84,7 +81,7 @@ export default function SchedulePage() {
   };
 
   const handleOpen = (c, eid, empl, shift_ptr) => {
-    // console.log(!open);
+    console.log(shift_ptr);
     if (!open) {
       setOpen(true);
       // console.log(open);
@@ -100,17 +97,30 @@ export default function SchedulePage() {
       if (shift_ptr.shift_id){
         setShift(shift_ptr.shift_id);
       }
+      setFormData((prev) => ({
+          ...prev,
+          serviceType: shift_ptr.client.service_type,
+        }));
       if (shift_ptr.shift_start_time) {
-        const [day, month, rest] = shift_ptr.shift_start_time.split("-");
-        const [year, time] = rest.split(" "); 
+        // console.log(shift_ptr.shift_start_time)
+        const [year, month, rest] = shift_ptr.shift_start_time.split("-");
+        const [day, time] = rest.split(" "); 
         var start_time= `${year}-${month}-${day}T${time}`;
         setShiftptrstart(start_time);
+        setFormData((prev) => ({
+          ...prev,
+          shift_start_time: start_time,
+        }));
         //console.log(shift_ptr_start);
       }
       if (shift_ptr.shift_end_time) {
-        const [day, month, rest] = shift_ptr.shift_end_time.split("-");
-        const [year, time] = rest.split(" "); 
+        const [year, month, rest] = shift_ptr.shift_end_time.split("-");
+        const [day, time] = rest.split(" "); 
         var end_time= `${year}-${month}-${day}T${time}`;
+        setFormData((prev) => ({
+          ...prev,
+          shift_end_time: end_time,
+        }));
         setShiftptrend(end_time);
       }
     }
@@ -118,7 +128,8 @@ export default function SchedulePage() {
 
   const handleChange = (e) => {
     if (e) {
-      setFormData({ ...formData, [e.target.name]: e.target.value });
+      const { name, value } = e.target;
+      setFormData({ ...formData, [name]: value || formData[name]});
     }
   };
 
@@ -181,9 +192,10 @@ export default function SchedulePage() {
         setData(json);
         // choose a default date: try to pick first daily_shift date if present
         const ds = json?.daily_shift;
-        // console.log(currentDate);
-        if (ds && ds.length) setCurrentDate(new Date().toLocaleDateString("en-GB").replace(/\//g, "-"));
-        else setCurrentDate(new Date().toISOString().slice(0, 10));
+        // console.log("Hi",new Date().toISOString().split("T")[0]);
+        // if (ds && ds.length) setCurrentDate(new Date().toLocaleDateString("en-GB").replace(/\//g, "-"));
+        // else 
+        setCurrentDate(new Date().toISOString().slice(0, 10));
         const hasUnassigned = (json?.shift).some(
           (s) => s.shift_status === "Unassigned"
         );
@@ -203,12 +215,15 @@ export default function SchedulePage() {
 
   // Build per-employee grouped data for the currentDate
   // Build per-employee grouped data for the currentDate
-const employees = (data.employee || [])
+    let employees = (data.employee || [])
+    //let shifts_filter = (data.shift || [])
+
   // only employees who are available and have daily_shift on that date
   .filter((emp) => {
     const hasDailyShift = (data.daily_shift || []).some(
       (ds) => ds.emp_id === emp.emp_id && ds.shift_date === currentDate
     );
+    // console.log(emp.emp_id === 16 && emp.status === "Available", currentDate)
     return emp.status === "Available" && hasDailyShift;
   })
   .map((emp) => {
@@ -231,6 +246,32 @@ const employees = (data.employee || [])
       appointments,
     };
   });
+    //let employees = (data.employee || []).filter((emp) => emp.status === "Available");
+
+    // Apply employee filter
+    if (filterEmployees.trim() !== "") {
+        employees = employees.filter(emp =>
+            (emp.first_name)
+                .toLowerCase()
+                .includes(filterEmployees.toLowerCase())
+        );
+    }
+
+    // Apply client group filter
+    if (filterClientGroup.trim() !== "") {
+        employees = employees.filter(emp =>
+            emp.client_group &&
+            emp.client_group.toLowerCase().includes(filterClientGroup.toLowerCase())
+        );
+    }
+
+    // Apply service department filter
+    if (filterServiceDept.trim() !== "") {
+        employees = employees.filter(emp =>
+            emp.service_department &&
+            emp.service_department.toLowerCase().includes(filterServiceDept.toLowerCase())
+        );
+    }
 
 
   // Helper: given sorted items, create segments (gap / item) to render efficiently
@@ -322,14 +363,14 @@ const employees = (data.employee || [])
                       <Form.Group className="mb-3" controlId="clientService">
                         <Form.Label>Client Services *</Form.Label>
                         <InputGroup>
-                          <Form.Control type="text" defaultValue="" name='service_type' onChange={handleChange} />
+                          <Form.Control type="text" defaultValue={formData.serviceType} name='serviceType' onChange={handleChange} />
                           <Button variant="info">Chosen</Button>
                         </InputGroup>
                       </Form.Group>
 
                       <Form.Group className="mb-3" controlId="serviceCode">
                         <Form.Label>Service Code *</Form.Label>
-                        <Form.Control type="text" defaultValue="ASW - 87 Neeve" name='service_code' onChange={handleChange} />
+                        <Form.Control type="text" defaultValue={formData.serviceType} name='service_code' onChange={handleChange} />
                       </Form.Group>
 
                       <Form.Group className="mb-3" controlId="employee">
@@ -499,11 +540,25 @@ const employees = (data.employee || [])
       {/* Header Filters */}
       <div className="card-responsive mt-3 p-3">
         <div className="d-flex flex-wrap gap-3">
-          <input type="text" className="form-control" placeholder="Employee" style={{ maxWidth: 200 }} />
-          <input type="text" className="form-control" placeholder="Client Group" style={{ maxWidth: 200 }} />
-          <input type="text" className="form-control" placeholder="Service Department" style={{ maxWidth: 200 }} />
+                  <input type="text" className="form-control" placeholder="Employee" style={{ maxWidth: 200 }}
+                      value={filterEmployees}
+                      onChange={(e) => setFilterEmployees(e.target.value)}                  />
+                  <input type="text" className="form-control" placeholder="Client Group" style={{ maxWidth: 200 }}
+                      value={filterClientGroup}
+                      onChange={(e) => setFilterClientGroup(e.target.value)}                  />
+                  <input type="text" className="form-control" placeholder="Service Department" style={{ maxWidth: 200 }}
+                      value={filterServiceDept}
+                      onChange={(e) => setFilterServiceDept(e.target.value)}                  />
           <input type="text" className="form-control" placeholder="Saved Filters" style={{ maxWidth: 200 }} />
-          <button className="btn btn-outline-secondary">Reset Filters</button>
+                  <button className="btn btn-outline-secondary"
+                      onClick={() => {
+                          setFilterEmployees("");
+                          setFilterClientGroup("");
+                          setFilterServiceDept("");
+                          setFilterSaved("");
+                      }}>
+                      Reset Filters
+                  </button>
           <button className="btn btn-primary">Apply</button>
         </div>
       </div>
