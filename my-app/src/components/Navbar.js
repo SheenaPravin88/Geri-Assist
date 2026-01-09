@@ -1,14 +1,24 @@
-import './styledashboard.css';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import '../../node_modules/bootstrap/dist/css/bootstrap.min.css';
-import '../../node_modules/bootstrap/dist/js/bootstrap.min.js';
-import "../../node_modules/bootstrap-icons/font/bootstrap-icons.css";
+import '../../node_modules/bootstrap-icons/font/bootstrap-icons.css';
+
 export default function Navbar() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const date = currentDate;
-  const showTime = date.getHours() 
-      + ':' + date.getMinutes() ;
+
+  const formatTime = (date) => {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -18,24 +28,45 @@ export default function Navbar() {
   }, []);
 
   return (
-    <div className='navbar sticky-top navbar-expand-lg bg-purple-200 text-centre vw-100 py-0 shadow'>
-    <div className='container-fluid px-0'>
-      <div className="justify-between navalign">
-        <div className="navbar-brand text-white text-xl font-bold mx-2">Geri-Assist</div>
-        <div className="navbar-nav me-auto mb-lg-0 mt-1">
-          <input type="text" placeholder="Search" className="nav-item border rounded" />
+    <nav className="modern-navbar">
+      <div className="container-fluid d-flex align-items-center justify-content-between position-relative" style={{ zIndex: 2 }}>
+        {/* Brand Logo */}
+        <div className="navbar-brand-modern d-flex align-items-center gap-2">
+          <i className="bi bi-heart-pulse-fill"></i>
+          Geri-Assist
         </div>
-        <div className='navbar-nav big-sc-login text-white'><Link to="/login" class="nav-link text-white">Login</Link> <Link to="/register" class="nav-link text-white">Register</Link></div>
-        <div className='navbar-nav small-sc-login text-white d-none'><Link to="/login" class="nav-link px-sm-0 px-1">
-                                    <i class="fs-3 bi-person text-white"></i></Link>
-                                    <Link to="/register" class="nav-link px-sm-0 px-1">
-                                    <i class="fs-3 bi-book text-white"></i></Link></div>
-        <div className="right-element d-flex text-sm">
-          <div className='row-md-12 ps-1'>Guelph Independent Living</div>
-          <div className="text-xs text-gray">{showTime}</div>
+
+        {/* Right Section */}
+        <div className="d-flex align-items-center gap-3">
+          {/* Auth Links */}
+          <div className="d-none d-lg-flex gap-2">
+            <Link to="/login" className="navbar-link-modern">
+              <i className="bi bi-box-arrow-in-right me-1"></i>
+              Login
+            </Link>
+            <Link to="/register" className="navbar-link-modern">
+              <i className="bi bi-person-plus me-1"></i>
+              Register
+            </Link>
+          </div>
+
+          {/* Mobile Auth Icons */}
+          <div className="d-lg-none d-flex gap-2">
+            <Link to="/login" className="navbar-link-modern p-2">
+              <i className="bi bi-box-arrow-in-right fs-5"></i>
+            </Link>
+            <Link to="/register" className="navbar-link-modern p-2">
+              <i className="bi bi-person-plus fs-5"></i>
+            </Link>
+          </div>
+
+          {/* Time and Organization */}
+          <div className="navbar-time-display d-none d-sm-flex flex-column align-items-end" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
+            <div className="fw-bold">{formatTime(currentDate)}</div>
+            <div style={{ opacity: 0.9, fontSize: '0.7rem' }}>{formatDate(currentDate)}</div>
+          </div>
         </div>
       </div>
-      </div>
-    </div>
+    </nav>
   );
 }

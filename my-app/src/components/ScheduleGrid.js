@@ -1,6 +1,6 @@
 import EmployeeRow from "./EmployeeRow";
 
-export default function ScheduleGrid({ data, service }) {
+export default function ScheduleGrid({ data, service, onShiftClick }) {
     if (!data?.employees?.length) {
         return <div className="empty-state">No schedule available</div>;
     }
@@ -21,6 +21,7 @@ export default function ScheduleGrid({ data, service }) {
                     key={emp.id}
                     employee={emp}
                     service={service}
+                    onShiftClick={onShiftClick}
                 />
             ))}
         </div>

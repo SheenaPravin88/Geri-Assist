@@ -16,13 +16,13 @@ export default function Login() {
     setOk(false);
     setBusy(true);
     try {
-        const payload = {
-            employeeId,
-            password
-        }
+      const payload = {
+        employeeId,
+        password
+      }
       const res = await fetch("http://127.0.0.1:5000/login", {
         method: "POST",
-         headers: {
+        headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify(payload)
@@ -38,54 +38,79 @@ export default function Login() {
   }
 
   return (
-    <div className="container-fluid">
-    <form className="form" onSubmit={onSubmit}>
-      <h1 className="title">Welcome back</h1>
-      <p className="subtitle">Sign in with employee credentials</p>
-
-      <div className="field">
-        <label className="label" htmlFor="employee_id">Employee ID</label>
-        <input
-          id="employee_id"
-          className="input"
-          value={employeeId}
-          onChange={(e) => setEmployeeId(e.target.value)}
-          placeholder="e.g. EMP12345"
-          required
-          autoComplete="username"
-        />
-      </div>
-
-      <div className="field">
-        <label className="label" htmlFor="password">Password</label>
-        <input
-          id="password"
-          className="input"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="••••••••"
-          required
-          autoComplete="current-password"
-        />
-        <span className="helper">Use the password set during registration</span>
-      </div>
-
-      <div className="actions">
-        <button className="btn btn-ghost" type="button" onClick={() => { setEmployeeId(""); setPassword(""); }}>
-          Clear
-        </button>
-        <button className="btn btn-primary" type="submit" disabled={busy}>
-          {busy ? "Signing in..." : "Sign in"}
-        </button>
-      </div>
-      <div className="helper">New User ? <Link to="/register">Click me to Register!</Link></div>
-      {msg && (
-        <div className={`message ${ok ? "success" : "error"}`} role="status" aria-live="polite">
-          {msg}
+    <div className="login-page">
+      <div className="login-card">
+        <div className="login-header">
+          <div className="login-logo">
+            <i className="bi bi-heart-pulse-fill" style={{ color: '#667eea' }}></i>
+          </div>
+          <h1 className="login-title">Welcome Back</h1>
+          <p className="login-subtitle">Sign in to Geri-Assist Dashboard</p>
         </div>
-      )}
-    </form>
+
+        <form onSubmit={onSubmit}>
+          <div className="login-field">
+            <label className="login-label" htmlFor="employee_id">Employee ID</label>
+            <input
+              id="employee_id"
+              className="login-input"
+              value={employeeId}
+              onChange={(e) => setEmployeeId(e.target.value)}
+              placeholder="e.g. 1001"
+              required
+              autoComplete="username"
+            />
+          </div>
+
+          <div className="login-field">
+            <label className="login-label" htmlFor="password">Password</label>
+            <input
+              id="password"
+              className="login-input"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              autoComplete="current-password"
+            />
+            <span className="login-helper-text">Enter the password provided by your administrator</span>
+          </div>
+
+          <div className="login-actions">
+            <button
+              className="login-btn-ghost"
+              type="button"
+              onClick={() => { setEmployeeId(""); setPassword(""); }}
+            >
+              Clear
+            </button>
+            <button
+              className="login-btn-primary"
+              type="submit"
+              disabled={busy}
+            >
+              {busy ? (
+                <span><span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Signing in...</span>
+              ) : (
+                <>Sign In <i className="bi bi-arrow-right ms-2"></i></>
+              )}
+            </button>
+          </div>
+
+          {msg && (
+            <div className={`login-message ${ok ? "success" : "error"}`} role="status" aria-live="polite">
+              {ok ? <i className="bi bi-check-circle-fill me-2"></i> : <i className="bi bi-exclamation-triangle-fill me-2"></i>}
+              {msg}
+            </div>
+          )}
+
+          <div className="login-footer">
+            <p className="mb-2">Don't have an account?</p>
+            <Link to="/register">Register New Employee</Link>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
