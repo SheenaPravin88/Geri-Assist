@@ -1,498 +1,221 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import './styledashboard.css';
-import Modal from './editModal.js';
-import { Form, Button, Row, Col, InputGroup } from 'react-bootstrap';
-
 
 export default function SchedulePage() {
-  const [scheduleData, setScheduleData] = useState(null);
+  const [scheduleData, setScheduleData] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [empltrue, setEmpltrue] = useState(true);
-  const [clttrue, setClttrue] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [clid, setClient] = useState(0);
-  const [empid, setEmp] = useState(0);
-  const [empl, setEmpl] = useState(null);
-  const [shift_ptr, setShiftptr] = useState(null);
-  const [message, setMessage] = useState("");
-  const [unassignedShifts, setUnassignedShifts] = useState([]);
-  const [formData, setFormData] = useState({
-    shift_id:"",
-    client_id:"",
-    emp_id:"",
-    shift_start_time:"",
-    shift_end_time:"",
-    shift_status:"",
-    Shift_Date:"",
-    Task_ID:"",
-    Skills:"",
-    Service_Instructions:"",
-    Tags:"",
-    Use_Service_Duration:"",
-    Forms:"",
-  });
-  
-  const [currentDate, setCurrentDate] = useState(new Date("07-23-2025"));
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState('matrix');
+  const [selectedLocation, setSelectedLocation] = useState('85 Neeve');
+  const [timelineDays, setTimelineDays] = useState(14);
 
-  // Optional: Update time every minute
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     setCurrentDate(new Date());
-  //   }, 60000);
-  //   return () => clearInterval(interval);
-  // }, []);
+  const locations = ['85 Neeve', '87 Neeve', 'Willow Place', 'Outreach'];
 
-  const handleClose = () => {
-    if(open){
-      setOpen(false);
-      setClient(0); 
-    }
-  };
+  useEffect(() => {
+    fetchScheduleData();
+  }, []);
 
-  const handleOpen = (c,eid,empl,shift_ptr) => {
-    if(!open){
-      setOpen(true);
-      if(c!==0){
-        setClient(c);
-      }
-      if(eid!==0){
-        setEmp(eid);
-      }
-      if(empl){
-        setEmpl(empl);
-      }
-      if(shift_ptr){
-        setShiftptr(shift_ptr);
-      }
-    }
-  };
-
-  const handleChange = (e) => {
-    if(e){
-      setFormData({ ...formData, [e.target.name]: e.target.value });
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    if(clid !== 0){
-      formData.client_id=clid;
-    }
-    if(empid !== 0){
-      formData.emp_id=empid;
-    }
-    console.log(JSON.stringify(formData));
-    e.preventDefault(); // Prevent page refresh
-
+  const fetchScheduleData = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:5000/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (!res.ok) {
-        throw new Error("API request failed");
-      }
-
-      const data = await res.json();
-      setMessage("Form submitted successfully");
-      console.log("API response:", data);
-      handleClose();
-      fetchSchedule();
-    } catch (err) {
-      console.error(err);
-      setMessage("Error submitting form");
-    }
-  };
-  const fetchSchedule = async () => {
-    try {
-      const response = await fetch("http://127.0.0.1:5000/scheduled"); // Replace with your API endpoint
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-
-      setScheduleData(data);
-    } catch (err) {
-      setError(err);
-    } finally {
+      const response = await axios.get('http://127.0.0.1:5000/scheduled');
+      setScheduleData(response.data.shift || []);
+      setEmployees(response.data.employee || []);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching schedule:', error);
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchSchedule();
-  }, []); // Empty dependency array ensures this runs once on mount
-
-  if (loading) return <div>Loading schedule...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-  const hours = Array.from({ length: 17 }, (_, i) => 6 + i); // 06 to 19
-
-  const clschedule = () => {
-    setEmpltrue(false);
-    setClttrue(true);
+  const getDays = () => {
+    const days = [];
+    const startObj = new Date(currentDate);
+    // startObj.setDate(startObj.getDate() - startObj.getDay() + 1); // Start Monday? Or today?
+    // Using simple forward projection from current view date
+    for (let i = 0; i < timelineDays; i++) {
+      const d = new Date(startObj);
+      d.setDate(startObj.getDate() + i);
+      days.push(d);
+    }
+    return days;
   };
 
-  const empschedule = () => {
-    setEmpltrue(true);
-    setClttrue(false);
-  };
-  const startHour = 6;
-  const endHour = 23;
-  const minutesScale = Array.from({ length: (endHour - startHour) * 60 }, (_, i) => i); 
-  const toMinutes = (timeStr) => {
-    const [h, m] = timeStr.split(":").map(Number);
-    return h * 60 + m;
-  };
-  const shifts = {
-    start : 0,
-    end : 0,
+  const days = getDays();
+
+  // Filter Logic:
+  // We want to show employees relevant to the organization.
+  // And cell data relevant to the selected location.
+  // Ideally, we filter employees who CAN work at 'selectedLocation'.
+  // For this UI, we will show all employees but only light up cells if they have a shift at 'selectedLocation'.
+  // If we don't have location data on the shift, we will simulate it (or show all).
+
+  // NOTE: Assuming scheduleData items have a 'location' or derived from client.
+  // Since real data might be sparse, I'll allow all shifts to show for now, but in a real app:
+  // const locShifts = scheduleData.filter(s => s.location === selectedLocation);
+
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
+        <div className="spinner-border text-primary" role="status"></div>
+      </div>
+    );
   }
-  // shifts.start = to_minutes("15:05:00")  
-  // shifts.end   = to_minutes("15:12:00") 
-  const duration = shifts.end - shifts.start
-  var currend = 60;
-  var currstart = 0;
 
   return (
-    <div className="container-fluid">
+    <div className="container-fluid p-4 animate-fadeIn" style={{ background: '#ffffff', minHeight: '100vh' }}>
+      {/* Header */}
+      <div className="mb-4">
+        <h2 className="fw-bold text-dark">Service Types</h2>
+        <p className="text-muted small">Select a location to view coverage.</p>
+      </div>
 
-    
+      {/* Location Filter Tabs - Styling to match 'try like this' image pill look */}
+      <div className="d-flex flex-wrap gap-2 mb-4">
+        {locations.map(loc => (
+          <button
+            key={loc}
+            onClick={() => setSelectedLocation(loc)}
+            className={`btn rounded-pill px-4 fw-bold border-0 ${selectedLocation === loc ? 'text-white' : 'text-secondary bg-light'}`}
+            style={{
+              backgroundColor: selectedLocation === loc ? '#6366f1' : '#f3f4f6', // Purple for active
+              transition: 'all 0.2s',
+              minWidth: '120px',
+              paddingTop: '10px',
+              paddingBottom: '10px'
+            }}
+          >
+            {loc}
+          </button>
+        ))}
+      </div>
 
-      {/* Tabs */}
-      <ul className="nav nav-tabs mt-3">
-        <li className="nav-item"
-          onClick={() => {
-            if (empltrue) {
-              clschedule();
-            } else {
-              empschedule();
-            }
-          }}
-        >
-          <a className={`nav-link ${empltrue ? 'active' : ''}`} href="#"
-          >All-Employee Schedule</a>
-        </li>
-        <li className="nav-item"
-          onClick={() => {
-            if (clttrue) {
-              empschedule();
-            } else {
-              clschedule();
-            }
-          }}
-        >
-          <a className={`nav-link ${clttrue ? 'active' : ''}`} href="#"
-          >All-Client Schedule</a>
-        </li>
-      </ul>
+      {/* Date Navigation & Controls */}
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="d-flex align-items-center gap-3">
+          <button className="btn btn-outline-secondary btn-sm rounded-circle" onClick={() => {
+            const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d);
+          }}><i className="bi bi-chevron-left"></i></button>
 
-      {/* Header Filters */}
-      <div className="card-responsive mt-3 p-3">
-        <div className="d-flex flex-wrap gap-3">
-          <input type="text" className="form-control" placeholder="Employee" style={{ maxWidth: 200 }} />
-          <input type="text" className="form-control" placeholder="Client Group" style={{ maxWidth: 200 }} />
-          <input type="text" className="form-control" placeholder="Service Department" style={{ maxWidth: 200 }} />
-          <input type="text" className="form-control" placeholder="Saved Filters" style={{ maxWidth: 200 }} />
-          <button className="btn btn-outline-secondary">Reset Filters</button>
-          <button className="btn btn-primary">Apply</button>
+          <span className="fw-bold text-dark fs-5">
+            {days[0].toLocaleString('default', { month: 'short' })} {days[0].getDate()} - {days[days.length - 1].toLocaleString('default', { month: 'short' })} {days[days.length - 1].getDate()}
+          </span>
+
+          <button className="btn btn-outline-secondary btn-sm rounded-circle" onClick={() => {
+            const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d);
+          }}><i className="bi bi-chevron-right"></i></button>
+        </div>
+
+        <div className="btn-group">
+          <button className={`btn btn-sm ${viewMode === 'matrix' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setViewMode('matrix')}>Matrix View</button>
+          <button className={`btn btn-sm ${viewMode === 'list' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setViewMode('list')}>List View</button>
         </div>
       </div>
 
-      {/* Timeline Table */}
-      <div className="schedule-container container-fluid mt-3">
-        <div className="schedule-grid overflow-auto">
-          <div className='header-row'>
-            <div className="header-cell employee-label">Employee</div>
-            {Array.from({ length: endHour - startHour }, (_, i) => startHour + i).map(hour => (
-              <div key={hour} className="header-cell text-center" style={{ gridColumn: `span 60` }}>{hour.toString().padStart(2, '0') + ":00"}</div>
-            ))}
+      {/* MATRIX VIEW */}
+      {viewMode === 'matrix' ? (
+        <div className="card border shadow-sm" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+          <div className="table-responsive">
+            <table className="table mb-0" style={{ borderCollapse: 'collapse' }}>
+              <thead className="bg-light">
+                <tr>
+                  <th className="py-3 ps-4 border-end border-bottom bg-white" style={{ position: 'sticky', left: 0, zIndex: 10, width: '200px' }}>
+                    Employee
+                  </th>
+                  {days.map((day, i) => (
+                    <th key={i} className="text-center py-3 border-end border-bottom bg-white text-secondary small fw-bold" style={{ minWidth: '100px' }}>
+                      <div className="text-dark">{day.getDate()}-{day.toLocaleString('default', { month: 'short' })}</div>
+                      {/* <div className="text-muted fw-normal">{day.toLocaleDateString('en-US', {weekday: 'short'})}</div> */}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {employees.map((emp) => (
+                  <tr key={emp.emp_id}>
+                    <td className="py-3 ps-4 border-end border-bottom bg-white fw-bold text-dark" style={{ position: 'sticky', left: 0, zIndex: 5 }}>
+                      {emp.first_name} {emp.last_name}
+                    </td>
+                    {days.map((day, i) => {
+                      const dayStr = day.toISOString().split('T')[0];
+                      const shift = scheduleData.find(s =>
+                        s.emp_id === emp.emp_id &&
+                        (s.date || s.shift_date)?.startsWith(dayStr)
+                      );
+
+                      // Visual Logic:
+                      // If shift exists -> Green block (or 'e' block)
+                      // If no shift -> Yellow background (Availability/Empty) as per image reference
+                      const hasShift = !!shift;
+
+                      return (
+                        <td key={i} className="p-0 border-end border-bottom text-center align-middle" style={{ height: '60px', backgroundColor: '#fff7ed' }}>
+                          {/* Using light yellow/orange tint (#fff7ed) for empty cells to match 'try like this' vibe */}
+                          {hasShift && (
+                            <div
+                              className="mx-auto shadow-sm rounded-1 d-flex align-items-center justify-content-center fw-bold small text-dark"
+                              style={{
+                                width: '80%',
+                                height: '70%',
+                                backgroundColor: '#ffffff', // White box for shift
+                                border: '1px solid #e5e7eb',
+                                cursor: 'pointer'
+                              }}
+                              title={shift.shift_start_time}
+                            >
+                              {/* Simply 'e' or time? User image showed 'e'. Let's show time for utility but keep simplistic look. */}
+                              {new Date(shift.shift_start_time).getHours()}:{new Date(shift.shift_start_time).getMinutes().toString().padStart(2, '0')}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {scheduleData.employee.map((emp, rowIndex) => (
-            <div className={emp.status === "Available" ? "row-body" : "d-none"}>
-              <div className='cell employee-cell'>{emp.first_name}</div>
-              <div key={rowIndex} className="row-body">
-                {Array.from({ length: endHour - startHour }, (_, i) => startHour + i).map((hour, colIndex) => {
-                  const dtime = currentDate;
-                  const emp_shift = scheduleData.shift.find(s => (s.emp_id === emp.emp_id));
-                  const appt = scheduleData.shift.find(s => (s.emp_id === emp.emp_id && (
-                    (hour == s.shift_start_time.split(" ")[1].split(":")[0]) &&
-                  (new Date(s.shift_start_time)).toDateString()==dtime.toDateString())))
-                  const nogap = scheduleData.shift.find(s => (s.emp_id === emp.emp_id && (
-                    (hour >= s.shift_start_time.split(" ")[1].split(":")[0] && hour < s.shift_end_time.split(" ")[1].split(":")[0]))))
-                  const s_dur = scheduleData.daily_shift.find(d => (d.emp_id === emp.emp_id && (
-                    (hour == d.shift_start_time.split(" ")[1].split(":")[0]) && 
-                  (new Date(d.shift_start_time)).toDateString()==dtime.toDateString())))
-                  const nogap_daily = scheduleData.daily_shift.find(d => (d.emp_id === emp.emp_id && (
-                    (hour >= d.shift_start_time.split(" ")[1].split(":")[0] && hour < d.shift_end_time.split(" ")[1].split(":")[0]))))
-                  // currstart = appt?(((parseInt(appt.shift_start_time.split(" ")[1].split(":")[0])) - ((toMinutes((appt.shift_start_time.split(" ")[1])))/60))*60):
-                  // (s_dur?(((parseInt(s_dur.shift_start_time.split(" ")[1].split(":")[0])) - ((toMinutes((s_dur.shift_start_time.split(" ")[1])))/60))*60):0);
-                    if (open) {
-                    return (
-                      <Modal isOpen={open} onClose={handleClose}>
-                        <div className="container mt-4 border p-4 bg-white rounded shadow-sm">
-                          <h5>Edit Visit</h5>
-                          <Row>
-                            {/* Left Side Form */}
-                            <Col md={6}>
-                              <Form onSubmit={handleSubmit}>
-                                <Form.Group controlId="visitId">
-                                  <Form.Label><strong>Visit ID: {shift_ptr.shift_id} - Details</strong></Form.Label>
-                                </Form.Group>
-                                
-                                <Form.Group className="mb-3" controlId="client">
-                                  <Form.Label>Client *</Form.Label>
-                                  <Form.Control type="text" disabled defaultValue={clid} name='client_id' onChange={handleChange} />
-                                </Form.Group>
-
-                                <Form.Group className="mb-3" controlId="clientService">
-                                  <Form.Label>Client Services *</Form.Label>
-                                  <InputGroup>
-                                    <Form.Control type="text" defaultValue="" name='service_type' onChange={handleChange} />
-                                    <Button variant="info">Chosen</Button>
-                                  </InputGroup>
-                                </Form.Group>
-
-                                <Form.Group className="mb-3" controlId="serviceCode">
-                                  <Form.Label>Service Code *</Form.Label>
-                                  <Form.Control type="text" defaultValue="ASW - 87 Neeve" name='service_code' onChange={handleChange} />
-                                </Form.Group>
-
-                                <Form.Group className="mb-3" controlId="employee">
-                                  <Form.Label>Assign to Employee</Form.Label>
-                                  <InputGroup>
-                                    <Form.Control type="text" defaultValue={emp.first_name} name='first_name' onChange={handleChange} />
-                                    <Button variant="secondary">Find Employee</Button>
-                                  </InputGroup>
-                                  <small className="text-muted">⚠️ Employees are filtered by department: ALS</small>
-                                </Form.Group>
-
-                                <Row>
-                                  <Col>
-                                    <Form.Group className="mb-3" controlId="activityCode">
-                                      <Form.Label>Activity Code</Form.Label>
-                                      <Form.Control type="text" placeholder="Type to add activity" name='Task_ID' onChange={handleChange} />
-                                    </Form.Group>
-                                  </Col>
-                                  <Col>
-                                    <Form.Group className="mb-3" controlId="forms">
-                                      <Form.Label>Forms</Form.Label>
-                                      <Form.Control type="text" placeholder="Type to add forms" name='Forms' onChange={handleChange} />
-                                    </Form.Group>
-                                  </Col>
-                                </Row>
-
-                                <Form.Group className="mb-3" controlId="skills">
-                                  <Form.Label>Skills</Form.Label>
-                                  <Form.Control type="text" placeholder="Type to add skills" name='Skills' onChange={handleChange} />
-                                </Form.Group>
-
-                                <Form.Group className="mb-3" controlId="instructions">
-                                  <Form.Label>Service Instructions</Form.Label>
-                                  <Form.Control as="textarea" rows={2} name='Service_Instructions' onChange={handleChange} />
-                                </Form.Group>
-
-                                <Form.Group controlId="tags">
-                                  <Form.Label>Tags</Form.Label>
-                                  <Button variant="outline-secondary" name='Tags' size="sm"> + </Button>
-                                </Form.Group>
-                              </Form>
-                            </Col>
-
-                            {/* Right Side Scheduling */}
-                            <Col md={6}>
-                              <Form.Group className="mb-3" controlId="scheduling">
-                                <Form.Label><strong>Scheduling</strong></Form.Label>
-                                <Row>
-                                  <Col>
-                                    <Form.Label>Start Time *</Form.Label>
-                                    <Form.Control type="datetime-local" defaultValue={shift_ptr.shift_start_time} name='shift_start_time' onChange={handleChange} />
-                                  </Col>
-                                  <Col>
-                                    <Form.Label>End Time *</Form.Label>
-                                    <Form.Control type="datetime-local" defaultValue={shift_ptr.shift_end_time} name='shift_end_time' onChange={handleChange} />
-                                  </Col>
-                                </Row>
-                              </Form.Group>
-
-                              <Form.Group className="mb-3" controlId="serviceDuration">
-                                <Form.Check type="checkbox" label="Use Service Duration (480 min)" name='Use_Service_Duration' onChange={handleChange} />
-                              </Form.Group>
-
-                              <Form.Group className="mb-3" controlId="breakTime">
-                                <Form.Label>Break (in Minutes)</Form.Label>
-                                <Form.Control type="number" defaultValue="0" name='Break' onChange={handleChange} />
-                              </Form.Group>
-
-                              <Form.Group className="mb-3" controlId="iadls">
-                                <Form.Label>IADLs</Form.Label>
-                                <div className="border p-2 rounded bg-light">
-                                  There are no matching IADLs for the selected period.
-                                  <Button variant="outline-dark" size="sm" className="float-end" onChange={handleChange}>Edit for visit</Button>
-                                </div>
-                              </Form.Group>
-                            </Col>
-                          </Row>
-
-                          <div className="text-end mt-3">
-                            <Button type="submit" variant="primary" onClick={handleSubmit}>Update Visit</Button>
-                          </div>
-                        </div>
-                      </Modal>
-                    );
-                  }
-                  //employee tile
-                  if (s_dur && nogap_daily && !clttrue && empltrue) {
-                    const startHr = parseInt(s_dur.shift_start_time.split(" ")[1].split(":")[0]);
-                    const endHr = parseInt(s_dur.shift_end_time.split(" ")[1].split(":")[0]);
-                    const startMinute = s_dur.shift_start_time.split(" ")[1].split(":")[1];
-                    const endMinute = s_dur.shift_end_time.split(" ")[1].split(":")[1];
-                    const start = toMinutes((s_dur.shift_start_time.split(" ")[1]));
-                    const end = toMinutes((s_dur.shift_end_time.split(" ")[1]));
-                    const duration = end - start;
-                    const gridStart = start - startHour * 60;
-                    currend = ((endHr+1) - (end/60))*60;
-                    
-                    const client = scheduleData.client.find(cl => cl.client_id === s_dur.client_id);
-                    return (
-                      <div key={colIndex}
-                        className={`cell appointment bg-secondary`}
-                        style={{ gridColumn: `${gridStart} / span ${duration}` }}
-                        onClick={() => handleOpen(client.client_id,emp.emp_id,emp,s_dur)}>
-                        {startHr}:{startMinute} - {endHr}:{endMinute}{currend}<br />
-                        {client && <div>{emp.service_type}</div>}
-                      </div>
-                    );
-                  }
-                  // else if (currend!=60 && !s_dur && nogap_daily && !clttrue && empltrue){
-                  //   var dur = currend;
-                  //   currend = 60;
-                  //   return (<div key={colIndex} className="cell empty-cell" style={{ gridColumn: `span ${dur-1}` }}></div>);
-                  // }
-                  // else if (currstart!=0 && !s_dur && nogap_daily && !clttrue && empltrue){
-                  //   var dur = currstart;
-                  //   currstart = 0;
-                  //   return (<div key={colIndex} className="cell empty-cell" style={{ gridColumn: `span ${dur}` }}>Hi9</div>);
-                  // }
-                  // else if (!s_dur && !nogap_daily && !clttrue && empltrue) {
-                  //   return (<div key={colIndex} className="cell empty-cell" style={{ gridColumn: `span ${60}` }}></div>);
-                  // }
-                  // else if (!s_dur && nogap_daily && !clttrue && empltrue) {
-                  //   return <div>Hi7</div>;
-                  // }
-                  //Client tile
-                  else if (appt && nogap && !empltrue && clttrue) {
-                    const startHr = parseInt(appt.shift_start_time.split(" ")[1].split(":")[0]);
-                    const endHr = parseInt(appt.shift_end_time.split(" ")[1].split(":")[0]);
-                    const startMinute = appt.shift_start_time.split(" ")[1].split(":")[1];
-                    const endMinute = appt.shift_end_time.split(" ")[1].split(":")[1];
-                    const start = toMinutes((appt.shift_start_time.split(" ")[1]));
-                    const end = toMinutes((appt.shift_end_time.split(" ")[1]));
-                    const duration = end - start;
-                    const gridStart = start - startHour * 60;
-                    currend = ((endHr+1) - (end/60))*60;
-                    
-                    const client = scheduleData.client.find(cl => cl.client_id === appt.client_id);
-
-                    return (
-                      <div key={colIndex}
-                        className={`cell appointment bg-primary`}
-                        style={{ gridColumn: `${gridStart} / span ${duration}` }}
-                        onClick={() => handleOpen(client.client_id, emp.emp_id,emp,appt)}>
-                        {startHr}:{startMinute} - {endHr}:{endMinute}{currend}<br />
-                        {client && <div>{client.address_line1}</div>}
-                      </div>
-                    );
-                  }
-                  // else if (currend != 60 && !appt && nogap && !empltrue && clttrue){
-                  //   var dur = currend;
-                  //   currend = 60;
-                  //   return (<div key={colIndex}><div className="cell empty-cell" style={{ gridColumn: `span ${dur-1}` }}></div></div>);
-                  // }
-                  // else if (currstart != 0 && !appt && nogap && !empltrue && clttrue){
-                  //   var dur = currstart;
-                  //   currstart = 0;
-                  //   return (<div key={colIndex} className="cell empty-cell" style={{ gridColumn: `span ${dur}` }}>Hi5</div>);
-                  // }
-                  // else if (!appt && !nogap && !empltrue && clttrue) {
-                  //   return (<div key={colIndex} className="cell empty-cell" style={{ gridColumn: `span ${60}` }}></div>);
-                  // }
-                  else {
-                    return null;
-                  }
-                })}
-              </div>
-              <div key={rowIndex} className={(empltrue && !clttrue) ? `row-body` : `d-none`}>
-                <div className='cell employee-cell'></div>
-                {hours.map((hour, colIndex) => {
-                  const dtime = currentDate;
-                  const appt = scheduleData.shift.find(s => (s.emp_id === emp.emp_id && (
-                    (hour == s.shift_start_time.split(" ")[1].split(":")[0]) && 
-                  (new Date(s.shift_start_time)).toDateString()==dtime.toDateString())))
-                  const nogap = scheduleData.shift.find(s => (s.emp_id === emp.emp_id && (
-                    (hour >= s.shift_start_time.split(" ")[1].split(":")[0] && 
-                    hour < s.shift_end_time.split(" ")[1].split(":")[0]))))
-                  currstart = appt?((parseInt(appt.shift_start_time.split(" ")[1].split(":")[0])) - ((toMinutes((appt.shift_start_time.split(" ")[1])))/60))*60:0;
-                  // const mintime = -startHour;
-                  //Client tile
-                  if (appt && nogap && empltrue && !clttrue) {
-                    const startHr = parseInt(appt.shift_start_time.split(" ")[1].split(":")[0]);
-                    const endHr = parseInt(appt.shift_end_time.split(" ")[1].split(":")[0]);
-                    const startMinute = appt.shift_start_time.split(" ")[1].split(":")[1];
-                    const endMinute = appt.shift_end_time.split(" ")[1].split(":")[1];
-                    const start = toMinutes((appt.shift_start_time.split(" ")[1]));
-                    const end = toMinutes((appt.shift_end_time.split(" ")[1]));
-                    const duration = end - start;
-                    currend = ((endHr+1) - (end/60))*60;
-                    
-                    const gridStart = start - startHour * 60;
-
-                    const client = scheduleData.client.find(cl => cl.client_id === appt.client_id);
-                    return (
-                      <div key={colIndex}
-                        className={`cell appointment bg-primary`}
-                        style={{ gridColumn: `${gridStart} / span ${duration}` }}
-                        onClick={() => handleOpen(client.client_id,emp.emp_id,emp,appt)}>
-                        {startHr}:{startMinute} - {endHr}:{endMinute}<br />
-                        {client && <div>{client.address_line1}</div>}
-                      </div>
-                    );
-                  }
-                  // else if (!appt && !nogap && empltrue && !clttrue) 
-                  // {
-                  //   return (<div key={colIndex} className="cell empty-cell" style={{ gridColumn: `span ${60}` }}>Hi1</div>);
-                  // }
-                  // else if (currend!=60 && !appt && nogap && !clttrue && empltrue){
-                  //   var dur = currend;
-                  //   currend = 60;
-                  //   return (<div key={colIndex} className="cell empty-cell" style={{ gridColumn: `span ${dur-1}` }}></div>);
-                  // }
-                  // else if (currstart!=0 && appt && nogap && !clttrue && empltrue){
-                  //   var dur = currstart;
-                  //   currstart = 60;
-                  //   return (<div key={colIndex} className="cell empty-cell" style={{ gridColumn: `span ${dur}` }}>Hi2</div>);
-                  // }
-                  // else if (!appt && !nogap && empltrue && !clttrue){
-                  //   return (<div key={colIndex} className="cell empty-cell" style={{ gridColumn: `span ${60}` }}></div>);
-                  // }
-                  else{
-                    return null;
-                  }
-                })}
-              </div>
-            </div>
-          )) 
-          }
         </div>
-      </div>
+      ) : (
+        <RosterListView days={days} scheduleData={scheduleData} employees={employees} selectedLocation={selectedLocation} />
+      )}
     </div>
   );
-
 }
 
+function RosterListView({ days, scheduleData, employees, selectedLocation }) {
+  return (
+    <div className="bg-white rounded border shadow-sm p-4">
+      {days.slice(0, 7).map((day, dayIdx) => {
+        const dayStr = day.toISOString().split('T')[0];
+        const shifts = scheduleData.filter(s => (s.date || s.shift_date)?.startsWith(dayStr)).sort((a, b) => (a.shift_start_time > b.shift_start_time ? 1 : -1));
 
+        return (
+          <div key={dayIdx} className="mb-4">
+            <h6 className="border-bottom pb-2 mb-3 fw-bold text-dark">{day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h6>
+            {shifts.length === 0 ? <p className="text-muted small ps-3">No shifts scheduled.</p> : (
+              <div className="table-responsive">
+                <table className="table table-sm table-hover align-middle">
+                  <tbody>
+                    {shifts.map((s, idx) => {
+                      const emp = employees.find(e => e.emp_id === s.emp_id);
+                      return (
+                        <tr key={idx}>
+                          <td width="100" className="fw-bold small">{s.shift_start_time ? new Date(s.shift_start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD'}</td>
+                          <td><span className="badge bg-light text-dark border">{selectedLocation || 'Assigned'}</span></td>
+                          <td>
+                            {emp ? <span className="small fw-bold">{emp.first_name} {emp.last_name}</span> : <span className="small text-danger">Unassigned</span>}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}

@@ -170,8 +170,9 @@ def parse_datetime(tstr: str) -> datetime:
             continue
     raise ValueError(f"Unknown datetime format: {tstr}")
 
-def overlaps(client_start_time, client_end_time, dsst, dset, ssst, sset):
+def overlaps(em,client_start_time, client_end_time, dsst, dset, ssst, sset):
     """Check if time overlaps."""
+    print(em)
     if(dsst=="" or dset==""):
         return False
     elif(ssst=="" and sset==""):
@@ -265,7 +266,7 @@ def assign_tasks(changes):
         print("Hi2",ch)
         eligible = [
             e for e in employeetab
-            if (overlaps(ch['shift_start_time'], ch['shift_end_time'],e['dsst'], e['dset'], e['ssst'], e['sset']) and (e['leaves'] == [] or (e['leaves'] and (not overlaps_datetime(ch['shift_start_time'], ch['shift_end_time'], lv['leave_start_time'], lv['leave_end_time']) for lv in e["leaves"]))) )
+            if (overlaps(e,ch['shift_start_time'], ch['shift_end_time'],e['dsst'], e['dset'], e['ssst'], e['sset']) and (e['leaves'] == [] or (e['leaves'] and (not overlaps_datetime(ch['shift_start_time'], ch['shift_end_time'], lv['leave_start_time'], lv['leave_end_time']) for lv in e["leaves"]))) )
         ]
         print(eligible)
 
@@ -769,139 +770,165 @@ def generate_next_month_shifts():
         data = request.get_json()
         emp_id = data.get("emp_id")
 
-        # Get employee's daily_shift timings
-        daily_timeline = (
+        if not emp_id:
+            return jsonify({"error": "emp_id is required"}), 400
+
+        # 1️⃣ Fetch weekly shift template
+        timeline_res = (
             supabase.table("employee_daily_timeline")
-            .select("shift_start_time, shift_end_time, week_day")
+            .select("week_day, shift_start_time, shift_end_time")
             .eq("emp_id", emp_id)
             .execute()
         )
 
-        if not daily_timeline.data:
-            return jsonify({"error": "No daily shift found for employee"}), 404
-        for daily_shift in daily_timeline.data:
-            # print(daily_shift)
-            shift_start_time = daily_shift["shift_start_time"]
-            shift_end_time = daily_shift["shift_end_time"]
-            # print(shift_start_time)
+        if not timeline_res.data:
+            return jsonify({"error": "No weekly timeline found"}), 404
 
-            timeline_map = {
-                daily_shift["week_day"].capitalize(): {
-                    "start": shift_start_time,
-                    "end": shift_end_time,
-                }
-                for entry in daily_shift
+        timeline_map = {
+            row["week_day"].capitalize(): {
+                "start": row["shift_start_time"],
+                "end": row["shift_end_time"]
             }
+            for row in timeline_res.data
+        }
 
-            # --- Calculate Next Month ---
-            today = datetime.today()
-            next_month = today.month + 1 if today.month < 12 else 1
-            year = today.year if today.month < 12 else today.year + 1
+        # 2️⃣ Find last scheduled shift date
+        last_shift_res = (
+            supabase.table("daily_shift")
+            .select("shift_date")
+            .eq("emp_id", emp_id)
+            .order("shift_date", desc=True)
+            .limit(1)
+            .execute()
+        )
 
-            first_day = datetime(year, next_month, 1)
-            _, last_day_num = calendar.monthrange(year, next_month)
-            last_day = datetime(year, next_month, last_day_num)
+        if last_shift_res.data:
+            start_date = datetime.strptime(
+                last_shift_res.data[0]["shift_date"], "%Y-%m-%d"
+            ) + timedelta(days=1)
+        else:
+            start_date = datetime.today()
 
-            # --- Generate weekday entries ---
-            new_entries = []
-            for n in range((last_day - first_day).days + 1):
-                current_date = first_day + timedelta(days=n)
-                weekday_name = current_date.strftime("%A")  # e.g., 'Monday'
+        # 3️⃣ End date = 6 weeks (42 days)
+        end_date = start_date + timedelta(days=41)
 
-                if weekday_name in timeline_map:
-                    shift_start_time = timeline_map[weekday_name]["start"]
-                    shift_end_time = timeline_map[weekday_name]["end"]
+        # 4️⃣ Generate shifts
+        new_entries = []
+        current_date = start_date
 
-                    new_entries.append({
-                        "emp_id": emp_id,
-                        "shift_date": current_date.strftime("%Y-%m-%d"),
-                        "shift_start_time": f"{current_date.strftime('%Y-%m-%d')} {shift_start_time}",
-                        "shift_end_time": f"{current_date.strftime('%Y-%m-%d')} {shift_end_time}",
-                        "shift_type":"flw-rtw",
-                    })
+        while current_date <= end_date:
+            weekday = current_date.strftime("%A")
 
-            # Insert all into Supabase
-            if new_entries:
-                # print(new_entries)
-                supabase.table("daily_shift").insert(new_entries).execute()
+            if weekday in timeline_map:
+                date_str = current_date.strftime("%Y-%m-%d")
+                start_time = timeline_map[weekday]["start"]
+                end_time = timeline_map[weekday]["end"]
 
-            return jsonify({
-                "message": f"{len(new_entries)} shifts added for next month.",
-                "count": len(new_entries)
-            }), 200
-        
+                new_entries.append({
+                    "emp_id": emp_id,
+                    "shift_date": date_str,
+                    "shift_start_time": f"{date_str} {start_time}",
+                    "shift_end_time": f"{date_str} {end_time}",
+                    "shift_type": "flw-rtw"
+                })
+
+            current_date += timedelta(days=1)
+
+        # 5️⃣ Insert into Supabase
+        if new_entries:
+            supabase.table("daily_shift").insert(new_entries).execute()
+
+        return jsonify({
+            "message": "Next 6 weeks schedule generated",
+            "count": len(new_entries),
+            "from": start_date.strftime("%Y-%m-%d"),
+            "to": end_date.strftime("%Y-%m-%d")
+        }), 200
 
     except Exception as e:
         print("Error generating shifts:", e)
         return jsonify({"error": str(e)}), 500
 
+
 @app.route("/client_generate_next_month_shifts", methods=["POST"])
 def client_generate_next_month_shifts():
-    
     try:
         data = request.get_json()
         client_id = data.get("client_id")
 
-        # Get employee's daily_shift timings
-        daily_timeline = (
+        if not client_id:
+            return jsonify({"error": "client_id is required"}), 400
+
+        # 1️⃣ Fetch weekly schedule template
+        weekly_timeline = (
             supabase.table("client_weekly_schedule")
-            .select("start_time, end_time, week_day")
+            .select("week_day, start_time, end_time")
             .eq("client_id", client_id)
             .execute()
         )
-        print(daily_timeline.data)
-        if not daily_timeline.data:
-            return jsonify({"error": "No daily shift found for client"}), 404
-        for daily_shift in daily_timeline.data:
-            # print(daily_shift)
-            shift_start_time = daily_shift["start_time"]
-            shift_end_time = daily_shift["end_time"]
-            # print(shift_start_time)
 
-            timeline_map = {
-                daily_shift["week_day"].capitalize(): {
-                    "start": shift_start_time,
-                    "end": shift_end_time,
-                }
-                for entry in daily_shift
+        if not weekly_timeline.data:
+            return jsonify({"error": "No weekly schedule found for client"}), 404
+
+        timeline_map = {
+            row["week_day"].capitalize(): {
+                "start": row["start_time"],
+                "end": row["end_time"]
             }
+            for row in weekly_timeline.data
+        }
 
-            # --- Calculate Next Month ---
-            today = datetime.today()
-            next_month = today.month + 1 if today.month < 12 else 1
-            year = today.year if today.month < 12 else today.year + 1
+        # 2️⃣ Find last scheduled date
+        last_shift_res = (
+            supabase.table("shift")
+            .select("date")
+            .eq("client_id", client_id)
+            .order("date", desc=True)
+            .limit(1)
+            .execute()
+        )
 
-            first_day = datetime(year, next_month, 1)
-            _, last_day_num = calendar.monthrange(year, next_month)
-            last_day = datetime(year, next_month, last_day_num)
+        if last_shift_res.data:
+            start_date = datetime.strptime(
+                last_shift_res.data[0]["date"], "%Y-%m-%d"
+            ) + timedelta(days=1)
+        else:
+            start_date = datetime.today()
 
-            # --- Generate weekday entries ---
-            new_entries = []
-            for n in range((last_day - first_day).days + 1):
-                current_date = first_day + timedelta(days=n)
-                weekday_name = current_date.strftime("%A")  # e.g., 'Monday'
+        # 3️⃣ 6-week window
+        end_date = start_date + timedelta(days=41)
 
-                if weekday_name in timeline_map:
-                    shift_start_time = timeline_map[weekday_name]["start"]
-                    shift_end_time = timeline_map[weekday_name]["end"]
+        # 4️⃣ Generate shifts
+        new_entries = []
+        current_date = start_date
 
-                    new_entries.append({
-                        "client_id": client_id,
-                        "date": current_date.strftime("%Y-%m-%d"),
-                        "shift_start_time": f"{current_date.strftime('%Y-%m-%d')} {shift_start_time}",
-                        "shift_end_time": f"{current_date.strftime('%Y-%m-%d')} {shift_end_time}",
-                    })
+        while current_date <= end_date:
+            weekday = current_date.strftime("%A")
 
-            # Insert all into Supabase
-            if new_entries:
-                # print(new_entries)
-                supabase.table("shift").insert(new_entries).execute()
+            if weekday in timeline_map:
+                date_str = current_date.strftime("%Y-%m-%d")
+                start_time = timeline_map[weekday]["start"]
+                end_time = timeline_map[weekday]["end"]
+
+                new_entries.append({
+                    "client_id": client_id,
+                    "date": date_str,
+                    "shift_start_time": f"{date_str} {start_time}",
+                    "shift_end_time": f"{date_str} {end_time}",
+                })
+
+            current_date += timedelta(days=1)
+
+        # 5️⃣ Insert into Supabase
+        if new_entries:
+            supabase.table("shift").insert(new_entries).execute()
 
         return jsonify({
-            "message": "shifts added for next month.",
-            "count": len(new_entries)
+            "message": "Next 6 weeks shifts generated",
+            "count": len(new_entries),
+            "from": start_date.strftime("%Y-%m-%d"),
+            "to": end_date.strftime("%Y-%m-%d")
         }), 200
-        
 
     except Exception as e:
         print("Error generating shifts:", e)
