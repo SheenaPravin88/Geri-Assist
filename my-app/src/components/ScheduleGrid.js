@@ -20,6 +20,7 @@ export default function ScheduleGrid({ data, service, onShiftClick }) {
                 <EmployeeRow
                     key={emp.id}
                     employee={emp}
+                    id={emp.id}
                     service={service}
                     onShiftClick={onShiftClick}
                 />
