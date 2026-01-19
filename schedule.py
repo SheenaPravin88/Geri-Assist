@@ -28,6 +28,67 @@ url = "https://asbfhxdomvclwsrekdxi.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzYmZoeGRvbXZjbHdzcmVrZHhpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDMyMjc5NSwiZXhwIjoyMDY5ODk4Nzk1fQ.iPXQg3KBXGXNlJwMzv5Novm0Qnc7Y5sPNE4RYxg3wqI"
 supabase: Client = create_client(url, key)
 
+@app.route('/dashboard/stats', methods=['GET'])
+def dashboard_stats():
+    now = datetime.utcnow()
+    today = now.date().isoformat()
+
+    # 1️⃣ Scheduled Visits (Today)
+    scheduled = supabase.table("shift") \
+        .select("shift_id", count="exact") \
+        .eq("date", today) \
+        .eq("shift_status", "Scheduled") \
+        .execute().count
+
+    # 2️⃣ Clocked-in Employees
+    clocked_in = supabase.table("shift") \
+        .select("shift_id", count="exact") \
+        .eq("date", today) \
+        .eq("shift_status", "Clocked in") \
+        .execute().count
+
+    # 3️⃣ Accepted Offers
+    accepted_offers = supabase.table("shift_offers") \
+        .select("offers_id", count="exact") \
+        .eq("status", "pending") \
+        .execute().count
+
+    # 4️⃣ Employees On Leave
+    on_leave = supabase.table("leaves") \
+        .select("emp_id", count="exact") \
+        .lte("leave_start_date", today) \
+        .gte("leave_end_date", today) \
+        .execute().count
+
+    # 5️⃣ Sick Leave
+    sick_leave = supabase.table("leaves") \
+        .select("emp_id", count="exact") \
+        .eq("leave_type", "Sick") \
+        .lte("leave_start_date", today) \
+        .gte("leave_end_date", today) \
+        .execute().count
+
+    # 6️⃣ Available Employees
+    total_employees = supabase.table("employee") \
+        .select("emp_id", count="exact") \
+        .execute().count
+
+    unavailable_now = supabase.table("leaves") \
+        .select("emp_id", count="exact") \
+        .lte("leave_start_date", today) \
+        .gte("leave_end_date", today) \
+        .execute().count
+
+    available = total_employees - (clocked_in + on_leave)
+
+    return jsonify([
+        { "label": "Schedule Visits", "value": scheduled, "color": "card-purple" },
+        { "label": "Clocked-in", "value": clocked_in, "color": "card-cyan" },
+        { "label": "Accepted Offers", "value": accepted_offers, "color": "card-purple" },
+        { "label": "Available", "value": max(available, 0), "color": "card-green" },
+        { "label": "On Leave", "value": on_leave, "color": "card-orange" },
+        { "label": "Unavailable - Sick", "value": sick_leave, "color": "card-orange" }
+    ])
 
 # schedule display
 @app.route('/scheduled', methods=['GET'])
@@ -1311,10 +1372,10 @@ def masterSchedule(service: str):
                     shift["shift_code"] = "evening"    # e
 
                 time_code = SHIFT_CONVENTIONS[service][shift["shift_code"]]
-
+            
             shifts.append({
                 "time": time_code,
-                "type": SHIFT_TYPE_MAP.get(shift["shift_type"], ""),
+                "type": SHIFT_TYPE_MAP.get(shift["shift_type"], "flw-rtw"),
                 "training": shift.get("training", False)
             })
         
@@ -1400,6 +1461,105 @@ SHIFT_TYPE_MAP = {
 }
 def get_6_week_dates(start_date: date):
     return [start_date + timedelta(days=i) for i in range(42)]
+
+@app.route("/update_master_shift", methods=["POST"])
+def update_master_shift():
+    try:
+        data = request.get_json()
+
+        emp_id = data.get("emp_id")
+        shift_type = data.get("shift_type")
+        shift_date = data.get("shift_date")
+        start_time = data.get("shift_start_time")
+        end_time = data.get("shift_end_time")
+        prev_type = data.get("type")
+
+        if not emp_id or not shift_type or not shift_date:
+            return jsonify({"error": "Missing required fields"}), 400
+
+        start_dt = f"{shift_date} {start_time}"
+        end_dt = f"{shift_date} {end_time}"
+
+        DAILY_SHIFT_TYPES = {
+            "flw-rtw",
+            "flw-training",
+            "gil",
+            "float",
+            "open"
+        }
+
+        LEAVE_TYPES = {
+            "leave",
+            "vacation",
+            "sick",
+            "bereavement",
+            "unavailable"
+        }
+
+        if prev_type == "open":
+
+            # 🟢 DAILY SHIFT
+            if shift_type in DAILY_SHIFT_TYPES:
+                supabase.table("daily_shift").insert({
+                    "emp_id": emp_id,
+                    "shift_date": shift_date,
+                    "shift_start_time": start_time,
+                    "shift_end_time": end_time,
+                    "shift_type": shift_type
+                }).execute()
+
+            # 🔴 LEAVE
+            elif shift_type in LEAVE_TYPES:
+                supabase.table("leaves").insert({
+                    "emp_id": emp_id,
+                    "leave_start_date": shift_date,
+                    "leave_end_date":shift_date,
+                    "leave_start_time": start_time,
+                    "leave_end_time": end_time,
+                    "leave_type": shift_type
+                }).execute()
+        else:
+            supabase.table("daily_shift") \
+                .delete() \
+                .eq("emp_id", emp_id) \
+                .eq("shift_date", shift_date) \
+                .execute()
+
+            supabase.table("leaves") \
+                .delete() \
+                .eq("emp_id", emp_id) \
+                .eq("leave_start_date", shift_date) \
+                .execute()
+
+            # Then insert updated version
+            if shift_type in LEAVE_TYPES:
+                supabase.table("leaves").insert({
+                    "emp_id": emp_id,
+                    "leave_start_date": shift_date,
+                    "leave_end_date": shift_date,
+                    "leave_start_time": start_time,
+                    "leave_end_time": end_time,
+                    "leave_type": shift_type
+                }).execute()
+            else:
+                supabase.table("daily_shift").insert({
+                    "emp_id": emp_id,
+                    "shift_date": shift_date,
+                    "shift_start_time": start_time,
+                    "shift_end_time": end_time,
+                    "shift_type": shift_type
+                }).execute()
+
+            return jsonify({"message": "Existing shift updated"}), 200
+        
+
+        return jsonify({"message": "Shift updated successfully"}), 200
+
+    except Exception as e:
+        print("ERROR:", e)
+        return jsonify({"error": str(e)}), 500
+
+
 
 
 # --- Run ---
